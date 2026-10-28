@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Prep Tracker">
+<title>Full Stack Prep Tracker</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+:root{--bg:#f6f5f2;--card:#fff;--tx:#1d1d1b;--mu:#73726c;--bd:#e3e1da;--ac:#1D9E75;--fe:#7F77DD;--be:#1D9E75;--ot:#EF9F27;--ds:#D85A30}
+@media (prefers-color-scheme:dark){:root{--bg:#141413;--card:#1f1f1d;--tx:#f1efe8;--mu:#a3a199;--bd:#3a3936}}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,system-ui,sans-serif;background:var(--bg);color:var(--tx);padding:env(safe-area-inset-top) 0 80px}
+header{padding:16px 16px 8px}
+h1{font-size:20px;margin:0}
+.sub{font-size:13px;color:var(--mu);margin-top:4px}
+.wrap{padding:0 16px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:14px;margin-bottom:12px}
+.row{display:flex;gap:10px}
+.stat{flex:1;background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:12px;text-align:center}
+.stat b{display:block;font-size:22px}
+.stat span{font-size:12px;color:var(--mu)}
+.bar{height:8px;background:var(--bd);border-radius:4px;overflow:hidden;margin-top:8px}
+.bar i{display:block;height:100%;background:var(--ac)}
+.it{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-top:1px solid var(--bd);font-size:15px;line-height:1.4}
+.it:first-of-type{border-top:0}
+.it input{width:20px;height:20px;margin:0;flex:none;accent-color:var(--ac)}
+.it.ck span{color:var(--mu);text-decoration:line-through}
+.dot{width:8px;height:8px;border-radius:50%;flex:none;margin-top:7px}
+.dh{font-size:13px;font-weight:600;color:var(--mu);margin:4px 0 6px}
+.wk{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-bottom:12px}
+.wk button{padding:8px 0;border-radius:8px;border:1px solid var(--bd);background:var(--card);color:var(--tx);font-size:13px}
+.wk button.on{border-color:var(--ac);color:var(--ac);font-weight:600}
+.wk button.full{background:var(--ac);color:#fff;border-color:var(--ac)}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--card);border-top:1px solid var(--bd);padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;padding:12px 0;border:0;background:none;color:var(--mu);font-size:13px;font-weight:600}
+nav button.on{color:var(--ac)}
+.tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:6px;color:#fff;margin-left:6px}
+.note{background:var(--ac);color:#fff;border-radius:10px;padding:8px 12px;font-size:13px;margin-bottom:10px}
+.btn{padding:10px 14px;border-radius:10px;border:1px solid var(--bd);background:var(--card);color:var(--tx);font-size:14px}
+.hide{display:none}
+canvas{max-width:100%}
+</style>
+</head>
+<body>
+<header><h1>Full Stack Prep Tracker</h1><div class="sub">2 Nov 2026 – 4 Apr 2027 · Java + React + Angular</div></header>
+<div class="wrap">
+
+<section id="today"></section>
+
+<section id="plan" class="hide">
+  <div class="wk" id="wkNav"></div>
+  <div class="card"><div style="display:flex;justify-content:space-between;align-items:center"><b id="wkTitle"></b><span id="wkCount" class="sub" style="margin:0"></span></div><div class="bar"><i id="wkBar"></i></div></div>
+  <div id="wkNote"></div>
+  <div id="wkDays"></div>
+</section>
+
+<section id="stats" class="hide">
+  <div class="row" style="margin-bottom:12px">
+    <div class="stat"><b id="sPct">0%</b><span>Overall</span></div>
+    <div class="stat"><b id="sStreak">0</b><span>Day streak</span></div>
+    <div class="stat"><b id="sPace">0</b><span>vs plan</span></div>
+  </div>
+  <div class="card"><div class="dh">Progress vs plan</div><canvas id="cLine" height="200"></canvas></div>
+  <div class="card"><div class="dh">By area</div><canvas id="cCat" height="180"></canvas></div>
+  <div class="card"><div class="dh">By week</div><canvas id="cWeek" height="220"></canvas></div>
+  <div class="card"><div class="dh">Backup (do weekly)</div>
+    <div class="row"><button class="btn" id="exp">Export</button><label class="btn">Import<input type="file" id="imp" accept=".json" hidden></label></div>
+  </div>
+</section>
+
+</div>
+<nav><button data-t="today" class="on">Today</button><button data-t="plan">Plan</button><button data-t="stats">Stats</button></nav>
+
+<script>
+const P=[
+["be","Java OOP + Git","Time complexity;Arrays, prefix sum;Carry forward","Java basics revise: data types, operators, loops","OOP: classes, objects, constructors;static, final keywords","Inheritance, polymorphism;Overloading vs overriding","Abstraction, encapsulation;Interfaces vs abstract classes","String pool, immutability;String vs StringBuilder vs StringBuffer","equals, hashCode contract;Object class methods;Git basics, merge, rebase","Git remotes, conflicts;Revise week"],
+["be","Java core + Collections","Subarrays;Sliding window;2D matrices","Exceptions: checked vs unchecked;try-with-resources, custom exceptions","Generics, wildcards, type erasure","Collections hierarchy;ArrayList vs LinkedList","HashMap internals: hashing, buckets, resize;HashSet, LinkedHashMap, TreeMap","Queue, Deque, PriorityQueue;Iterator, fail-fast vs fail-safe","Comparable vs Comparator;Collections interview Qs","Immutable class, records, sealed classes;Revise week"],
+["be","Java 8 + Multithreading","Bit manipulation 1;Bit manipulation 2;Modular arithmetic","Lambdas;Functional interfaces","Streams: map, filter, reduce;Collectors, groupingBy","Optional, method references;Stream coding questions","Threads, Runnable, lifecycle","synchronized, volatile;Locks, ReentrantLock","ExecutorService, thread pools;CompletableFuture","ConcurrentHashMap, deadlock;Revise week"],
+["ot","JVM + HTML/CSS","GCD, primes;Combinatorics;Sorting","JVM architecture, class loading;Heap vs stack","Garbage collection, memory leaks;Serialization;Maven, Gradle","Semantic HTML, forms, tables;Accessibility basics","Box model, display, units;Specificity, inheritance, positioning","Flexbox, Grid;Media queries","Responsive layout practice;CSS interview Qs","Revise week"],
+["fe","JavaScript core","Comparators;Merge sort, quick sort;Binary search","Data types, == vs ===;Type coercion","Execution context, hoisting;let, const, TDZ","Lexical scope, closures","Higher-order functions;Functional programming","DOM;Events, propagation, delegation","Build weather app","Revise week"],
+["fe","JS async + OOP","Search on answer;Hashing;Two pointers","Event loop;Microtask vs macrotask","Callbacks;Promises","Async/await, error handling;Promise.all, allSettled, race, any","this keyword;call, apply, bind","Prototypes, inheritance;Classes","Polyfills: bind, map, filter, reduce, Promise.all;Debounce, throttle","Deep vs shallow copy;Kanban board;Revise week"],
+["fe","TypeScript + React core","Strings, Rabin-Karp;Recursion;Recursion problems","TS types, interfaces;type vs interface","Generics, utility types, enums","JSX, virtual DOM;Reconciliation, keys","State, props;useEffect, lifecycle","Forms, lists;Controlled vs uncontrolled","React Router;Protected routes","IMDB: pagination, search, filter;Revise week"],
+["fe","React advanced + Redux","Linked list;Loop detection;Doubly linked list","useMemo, useCallback, React.memo","useRef, useReducer;Custom hooks","Prop drilling, Context API","Redux Toolkit, slices;Redux hooks","Async Redux, Thunk;RTK Query","Lazy loading, code splitting, Suspense;Error boundaries","React testing: Jest, RTL;Deployment;Revise week"],
+["fe","Angular","Stacks;Nearest smaller/greater;Queues","Components, templates;Data binding","Directives, pipes","Services, dependency injection","Routing, guards;Lazy-loaded modules","RxJS: observables, subjects;map, switchMap, mergeMap","NgRx: store, actions, effects;Reactive forms","Change detection, OnPush;Angular interview Qs;Revise week"],
+["fe","Frontend interview mode","Tree traversal;Tree views;BST","React interview Qs","JS output-based questions","Machine coding: todo, autocomplete","Machine coding: infinite scroll, pagination","Web performance, Core Web Vitals;XSS, CSRF, CORS","Cookies, localStorage, sessionStorage;Frontend system design basics","Frontend mock interview;Update resume, LinkedIn"],
+["be","Spring core","LCA;Tries;Heaps","Spring intro, IoC;DI types: constructor, setter, field","@Component, @Service, @Repository;@Autowired, @Qualifier, @Primary","Bean scopes;Bean lifecycle","Spring Boot starters;Auto-configuration","application.yml, profiles;@Value, @ConfigurationProperties","AOP basics","Spring core interview Qs;Revise week"],
+["be","Spring REST","Heap problems;Greedy;Greedy problems","MVC, @RestController;Request mapping, path vs query params","REST principles;HTTP methods, status codes","DTOs, mappers;Validation: @Valid","Exception handling, @ControllerAdvice","RestTemplate, WebClient, Feign","Swagger, OpenAPI;CORS","SLF4J logging, Actuator;Revise week"],
+["be","Spring Data JPA","Backtracking basics;Backtracking advanced;Subsets, permutations","JPA vs Hibernate;Entities, IDs, UUIDs","Repositories;Query methods","JPQL, native queries","1-1, 1-many, many-many mappings;Inheritance mapping","Fetch types, fetch modes;N+1 problem","@Transactional, propagation;HikariCP connection pool","Flyway, schema versioning;Revise week"],
+["be","SQL","DP 1D;DP 1D problems;DP 2D","Keys, normalization","Joins: inner, outer, self","GROUP BY, HAVING;Window functions","Subqueries, views","Indexing, B-trees;EXPLAIN plans","Transactions, ACID;Isolation levels, locks, deadlocks","Schema design;SQL query practice;Revise week"],
+["be","Testing + Security","DP 2D problems;Knapsack 0/1;Unbounded knapsack","JUnit 5","Mockito, test doubles","@WebMvcTest, @SpringBootTest;Testcontainers","Authn vs authz;BCrypt","Spring Security filter chain","JWT","OAuth2;Revise week"],
+["ot","Full stack project","Knapsack applications;DP on strings;LCS, edit distance","Setup: React + Spring Boot + MySQL","Auth service: JWT, roles","Catalog API: paging, sorting","React frontend integration","Payments, webhooks","Redis @Cacheable;@Async, @Scheduled cron","Project tests;GitHub README;Revise week"],
+["be","Microservices","Famous DP problems;BFS;DFS","Monolith vs microservices","Service discovery;API gateway","Kafka: producers, consumers, topics, partitions","Resilience4j: circuit breaker, retry","Distributed tracing, logging, monitoring","Project: add Kafka, gateway","Microservices interview Qs;Revise week"],
+["be","Docker, K8s, CI/CD","Topological sort;DSU;Cycle detection","Docker images, containers","Dockerfile, Docker Compose","K8s pods, deployments, services","ConfigMaps, secrets, scaling","CI/CD: Jenkins or GitHub Actions","Project: Dockerize, add CI","Revise week"],
+["ot","AWS","MST;Dijkstra;Floyd Warshall","IAM;EC2","S3;RDS","VPC, security groups;Route 53","ELB, auto scaling;Elastic Beanstalk","Lambda, API Gateway","Deploy project on AWS","SQS, SNS, DynamoDB;Revise week"],
+["ot","LLD","Mixed arrays;Mixed trees;Mixed graphs","SOLID principles","Creational: singleton, factory, builder","Structural: adapter, decorator, proxy","Behavioral: strategy, observer, command","TicTacToe;Parking Lot","BookMyShow","Splitwise;Revise week"],
+["ot","HLD","Mixed DP;Mixed strings;Hard problems","Scaling, load balancing;Consistent hashing","Caching, CDN","Sharding, replication;SQL vs NoSQL","CAP, consistency;Rate limiting","Message queues","Design: URL shortener, chat app","Design: news feed, e-commerce;Revise week"],
+["ot","Final mocks","Timed contest;Timed contest;Interview problems","Java mock interview","Spring Boot mock interview","React + Angular mock interview","LLD machine coding mock","HLD mock interview","Weak topics revision","Final revision"]];
+const CAT={fe:["Frontend","var(--fe)","#7F77DD"],be:["Backend","var(--be)","#1D9E75"],ot:["Core skills","var(--ot)","#EF9F27"],ds:["DSA","var(--ds)","#D85A30"],ap:["Applying","var(--mu)","#888780"]};
+const S=new Date(2026,10,2),K="fsPrepTracker_v1",DAYS=154;
+let st={};try{st=JSON.parse(localStorage.getItem(K))||{}}catch(e){}
+const save=()=>localStorage.setItem(K,JSON.stringify(st));
+const iso=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+const dateOf=i=>{const d=new Date(S);d.setDate(S.getDate()+i);return d};
+const fmt=d=>d.toLocaleDateString("en-IN",{weekday:"short",day:"numeric",month:"short"});
+function items(w,d){const p=P[w];let a=p[3+d].split(";").map(t=>({t,c:p[0]}));
+ a.push(d<6?{t:"DSA: "+p[2].split(";")[Math.floor(d/2)]+" (2 problems)",c:"ds"}:{t:"DSA: revise week's problems",c:"ds"});
+ if(w>=9&&d<5)a.push({t:"Apply to 2 jobs",c:"ap"});return a.map((x,k)=>({...x,id:w+"-"+d+"-"+k}))}
+const ALL=[];for(let w=0;w<22;w++)for(let d=0;d<7;d++)items(w,d).forEach(x=>ALL.push({...x,day:w*7+d}));
+const todayIdx=()=>Math.floor((new Date().setHours(0,0,0,0)-S)/864e5);
+let curW=Math.min(21,Math.max(0,Math.floor(todayIdx()/7)));
+
+function itemHTML(x){const c=!!st[x.id];return `<label class="it${c?" ck":""}"><input type="checkbox" data-id="${x.id}"${c?" checked":""}><span class="dot" style="background:${CAT[x.c][1]}"></span><span>${x.t}</span></label>`}
+function dayCard(i){const w=Math.floor(i/7),d=i%7,its=items(w,d),n=its.filter(x=>st[x.id]).length;
+ return `<div class="card"><div class="dh">Day ${i+1} · ${fmt(dateOf(i))} · ${n}/${its.length}</div>${its.map(itemHTML).join("")}</div>`}
+
+function renderToday(){let t=todayIdx(),h="";
+ if(t<0)h=`<div class="card"><b>Starts Monday, 2 Nov 2026.</b><div class="sub">Preview of Day 1:</div></div>`+dayCard(0);
+ else if(t>=DAYS)h=`<div class="card"><b>Plan finished.</b><div class="sub">Go win interviews.</div></div>`;
+ else{const w=Math.floor(t/7);h=`<div class="card"><b>Week ${w+1}: ${P[w][1]}</b><span class="tag" style="background:${CAT[P[w][0]][2]}">${CAT[P[w][0]][0]}</span><div class="bar"><i style="width:${pct(t)}%"></i></div><div class="sub">Overall ${pctAll()}% done</div></div>`+dayCard(t);
+  const back=[];for(let i=Math.max(0,t-7);i<t;i++){const its=items(Math.floor(i/7),i%7);if(its.some(x=>!st[x.id]))back.push(i)}
+  if(back.length)h+=`<div class="dh">Pending from last 7 days</div>`+back.map(dayCard).join("")}
+ document.getElementById("today").innerHTML=h}
+function pct(){return pctAll()}
+function pctAll(){return Math.round(Object.values(st).filter(Boolean).length/ALL.length*100)}
+function wkDone(w){let n=0,t=0;for(let d=0;d<7;d++)items(w,d).forEach(x=>{t++;if(st[x.id])n++});return[n,t]}
+
+function renderPlan(){
+ document.getElementById("wkNav").innerHTML=P.map((_,w)=>{const[n,t]=wkDone(w);return `<button data-w="${w}" class="${w==curW?"on":""}${n==t?" full":""}">W${w+1}</button>`}).join("");
+ const[n,t]=wkDone(curW);document.getElementById("wkTitle").textContent=`Week ${curW+1}: ${P[curW][1]}`;
+ document.getElementById("wkCount").textContent=`${n}/${t}`;document.getElementById("wkBar").style.width=Math.round(n/t*100)+"%";
+ document.getElementById("wkNote").innerHTML=curW==9?'<div class="note">Start applying: Senior Frontend (React/Angular)</div>':curW==15?'<div class="note">Start applying: Java Full Stack</div>':"";
+ let h="";for(let d=0;d<7;d++)h+=dayCard(curW*7+d);document.getElementById("wkDays").innerHTML=h}
+
+let charts={};
+function renderStats(){
+ const done=Object.keys(st).filter(k=>st[k]);document.getElementById("sPct").textContent=pctAll()+"%";
+ const dates=new Set(Object.values(st).filter(Boolean));let s=0,d=new Date();d.setHours(0,0,0,0);if(!dates.has(iso(d)))d.setDate(d.getDate()-1);
+ while(dates.has(iso(d))){s++;d.setDate(d.getDate()-1)}document.getElementById("sStreak").textContent=s;
+ const t=Math.min(DAYS-1,todayIdx());let plan=0;if(t>=0)ALL.forEach(x=>{if(x.day<=t)plan++});
+ const diff=done.length-plan;document.getElementById("sPace").textContent=t<0?"–":(diff>=0?"+":"")+diff;
+ const css=getComputedStyle(document.body),tx=css.getPropertyValue("--mu").trim(),gr=css.getPropertyValue("--bd").trim();
+ Chart.defaults.color=tx;Chart.defaults.borderColor=gr;Chart.defaults.font.family="-apple-system,system-ui";
+ const L=[],PL=[],AC=[];let cp=0;const perDay=Array(DAYS).fill(0);ALL.forEach(x=>perDay[x.day]++);
+ const byDate={};Object.values(st).filter(Boolean).forEach(v=>byDate[v]=(byDate[v]||0)+1);let ca=0;
+ for(let i=0;i<DAYS;i++){cp+=perDay[i];const dt=dateOf(i);L.push(i%7==0?"W"+(i/7+1):"");PL.push(cp);
+  ca+=(byDate[iso(dt)]||0);AC.push(i<=todayIdx()?ca:null)}
+ if(todayIdx()<0)AC[0]=done.length;
+ charts.l?.destroy();charts.l=new Chart(document.getElementById("cLine"),{type:"line",data:{labels:L,datasets:[{label:"Plan",data:PL,borderColor:"#B4B2A9",borderDash:[5,4],pointRadius:0,borderWidth:2},{label:"Done",data:AC,borderColor:"#1D9E75",backgroundColor:"rgba(29,158,117,.15)",fill:true,pointRadius:0,borderWidth:2.5}]},options:{plugins:{legend:{position:"bottom"}},scales:{x:{ticks:{autoSkip:false,maxRotation:0,font:{size:9}},grid:{display:false}},y:{beginAtZero:true}}}});
+ const cats=["fe","be","ot","ds"],cv=cats.map(c=>{const a=ALL.filter(x=>x.c==c);return Math.round(a.filter(x=>st[x.id]).length/a.length*100)});
+ charts.c?.destroy();charts.c=new Chart(document.getElementById("cCat"),{type:"bar",data:{labels:cats.map(c=>CAT[c][0]),datasets:[{data:cv,backgroundColor:cats.map(c=>CAT[c][2]),borderRadius:6}]},options:{indexAxis:"y",plugins:{legend:{display:false}},scales:{x:{min:0,max:100,ticks:{callback:v=>v+"%"}}}}});
+ const wv=P.map((_,w)=>{const[n,t]=wkDone(w);return Math.round(n/t*100)});
+ charts.w?.destroy();charts.w=new Chart(document.getElementById("cWeek"),{type:"bar",data:{labels:P.map((_,w)=>"W"+(w+1)),datasets:[{data:wv,backgroundColor:P.map(p=>CAT[p[0]][2]),borderRadius:4}]},options:{plugins:{legend:{display:false}},scales:{y:{min:0,max:100,ticks:{callback:v=>v+"%"}},x:{grid:{display:false},ticks:{font:{size:9}}}}}})}
+
+let tab="today";
+function render(){({today:renderToday,plan:renderPlan,stats:renderStats})[tab]()}
+document.querySelector("nav").onclick=e=>{const b=e.target.closest("button");if(!b)return;tab=b.dataset.t;
+ document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("on",x==b));
+ ["today","plan","stats"].forEach(s=>document.getElementById(s).classList.toggle("hide",s!=tab));window.scrollTo(0,0);render()};
+document.body.addEventListener("change",e=>{const id=e.target.dataset?.id;if(!id)return;
+ if(e.target.checked)st[id]=iso(new Date());else delete st[id];save();render()});
+document.getElementById("wkNav").onclick=e=>{const b=e.target.closest("[data-w]");if(b){curW=+b.dataset.w;renderPlan()}};
+document.getElementById("exp").onclick=()=>{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify(st)],{type:"application/json"}));a.download="prep-backup-"+iso(new Date())+".json";a.click()};
+document.getElementById("imp").onchange=e=>{const f=e.target.files[0];if(!f)return;f.text().then(t=>{try{st=JSON.parse(t);save();render();alert("Backup restored")}catch(x){alert("Bad file")}})};
+render();
+</script>
+</body>
+</html>
